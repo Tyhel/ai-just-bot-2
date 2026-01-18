@@ -12,17 +12,22 @@ import logging
 BOT_TOKEN = "8328706906:AAEcSN2x88oLLsKzzV1lIEfJ6zvjIweK6uk"
 MERCHANT_TOKEN = "516202:AA7y0K7T2YhC94z0lLMOmWPeKAVs9mGEu62"
 
-# === ЗАГРУЗКА ПРОМТОВ (если файлы есть в репозитории) ===
+# === ЗАГРУЗКА ПРОМТОВ (улучшенная версия) ===
 def load_prompts(filepath, count):
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             lines = f.readlines()
         prompts = []
         for line in lines:
-            clean = line.split('. "', 1)[-1].rstrip('"\n')
-            if not clean and '"' in line:
-                clean = line.split('. "', 1)[-1].rstrip('"').rstrip('\n')
-            prompts.append(clean)
+            line = line.strip()
+            if not line:
+                continue
+            if '. "' in line:
+                clean = line.split('. "', 1)[1].rstrip('"\n')
+                prompts.append(clean)
+            else:
+                # Если строка не содержит '. "', добавляем как есть
+                prompts.append(line)
         return "\n\n".join([f"🔹 Промт {i+1}:\n{p}" for i, p in enumerate(prompts[:count])])
     except Exception as e:
         print(f"⚠️ Ошибка загрузки {filepath}: {e}")
@@ -71,7 +76,7 @@ async def balance_handler(callback: CallbackQuery):
     text = (
         "💰 <b>Ваш баланс:</b>\n\n"
         "На данный момент баланс не используется — все покупки совершаются напрямую через криптовалюту.\n\n"
-        "Вы можете купить товар за 0.1 USDT в любое время."
+        "Вы можете купить товар за 1–2 USDT в любое время."
     )
     try:
         await callback.message.edit_text(
@@ -87,8 +92,8 @@ async def balance_handler(callback: CallbackQuery):
 async def products_handler(callback: CallbackQuery):
     text = "🛍️ <b>Выберите товар:</b>"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📦 50 футуристических промтов", callback_data="buy_50pack")],
-        [InlineKeyboardButton(text="🔥 Топ-25 промтов (NanoBanana, MJ, SDXL)", callback_data="buy_25pack")],
+        [InlineKeyboardButton(text="📦 50 футуристических промтов — 2 USDT", callback_data="buy_50pack")],
+        [InlineKeyboardButton(text="🔥 Топ-25 промтов — 1 USDT", callback_data="buy_25pack")],
         back_to_menu_button()
     ])
     try:
@@ -103,9 +108,9 @@ async def help_handler(callback: CallbackQuery):
         "❓ <b>Помощь</b>\n\n"
         "1️⃣ Перейдите в «Товары»\n"
         "2️⃣ Выберите нужный набор промтов\n"
-        "3️⃣ Нажмите «Купить за 0.1 USDT»\n"
+        "3️⃣ Нажмите «Купить»\n"
         "4️⃣ Оплатите через Crypto Bot\n"
-        "5️⃣ Получите промты автоматически\n\n"
+        "5️⃣ Получите промты автоматически в виде файла 📄\n\n"
         "💡 Все промты готовы к использованию в Midjourney, DALL·E 3, Stable Diffusion, NanoBanana."
     )
     try:
@@ -133,16 +138,18 @@ async def select_product(callback: CallbackQuery):
     product_id = callback.data
     if product_id == "buy_50pack":
         desc = "Полный набор из 50 футуристических промтов для генерации изображений, видео, UI и музыки."
+        price = "2 USDT"
     else:
         desc = "Топ-25 промтов для NanoBanana, Midjourney, SDXL и DALL·E 3. Романтика, приключения, повседневность — с персонализацией лиц."
+        price = "1 USDT"
 
     text = (
         f"<b>🛒 Вы выбрали:</b>\n\n{desc}\n\n"
-        "💰 Цена: <b>0.1 USDT</b>\n"
-        "⚡ После оплаты — бот автоматически пришлёт пакет промтов 🖼️"
+        f"💰 Цена: <b>{price}</b>\n"
+        "⚡ После оплаты — бот автоматически пришлёт пакет промтов в виде файла 📄"
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Купить за 0.1 USDT", callback_data=f"confirm_{product_id}")],
+        [InlineKeyboardButton(text=f"💳 Купить за {price}", callback_data=f"confirm_{product_id}")],
         back_to_products_button()
     ])
     try:
@@ -157,14 +164,21 @@ async def confirm_purchase(callback: CallbackQuery):
     user_id = callback.from_user.id
     payload = f"{product_id}_user_{user_id}"
 
+    if product_id == "buy_50pack":
+        amount = "2.0"
+        description = "Полный набор из 50 промтов"
+    else:
+        amount = "1.0"
+        description = "Топ-25 промтов"
+
     try:
         response = requests.post(
             "https://pay.crypt.bot/api/createInvoice",
             headers={"Crypto-Pay-API-Token": MERCHANT_TOKEN},
             json={
                 "asset": "USDT",
-                "amount": "0.1",
-                "description": "Премиум-промты для AI-генераторов",
+                "amount": amount,
+                "description": description,
                 "payload": payload
             }
         )
@@ -172,7 +186,7 @@ async def confirm_purchase(callback: CallbackQuery):
         if data.get("ok"):
             pay_url = data["result"]["pay_url"]
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="➡️ Оплатить 0.1 USDT", url=pay_url)],
+                [InlineKeyboardButton(text=f"➡️ Оплатить {amount} USDT", url=pay_url)],
                 back_to_products_button()
             ])
             try:
@@ -241,7 +255,6 @@ async def crypto_webhook(request: Request):
     if user_id and file_content:
         try:
             print(f"📤 [WEBHOOK] Отправка файла '{filename}' пользователю {user_id}")
-            # ✅ Отправка как файл
             document = BufferedInputFile(
                 file_content.encode("utf-8"),
                 filename=filename
@@ -260,7 +273,7 @@ async def crypto_webhook(request: Request):
 
     return Response(status_code=200)
 
-# === ЗАПУСК (без потоков!) ===
+# === ЗАПУСК ===
 async def main():
     polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
     config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
