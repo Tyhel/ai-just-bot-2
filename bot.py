@@ -191,7 +191,7 @@ async def confirm_purchase(callback: CallbackQuery):
         await callback.message.answer("⚠️ Техническая ошибка.")
     await callback.answer()
 
-# === ИСПРАВЛЕННЫЙ WEBHOOK ДЛЯ AIOGRAM 3.X ===
+# === ИСПРАВЛЕННЫЙ WEBHOOK ДЛЯ RENDER + AIOGRAM 3.X ===
 @app.post("/crypto-webhook")
 async def crypto_webhook(request: Request):
     print("📥 [WEBHOOK] Запрос получен!")
@@ -239,11 +239,9 @@ async def crypto_webhook(request: Request):
     if user_id and full_text:
         try:
             print(f"📤 [WEBHOOK] Отправка {len(full_text)} символов пользователю {user_id}")
-            # ✅ ПРАВИЛЬНЫЙ СПОСОБ ДЛЯ AIOGRAM 3.X
+            # ✅ ПРАВИЛЬНЫЙ СПОСОБ: прямой вызов без потоков
             for i in range(0, len(full_text), 4000):
-                asyncio.create_task(
-                    bot.send_message(chat_id=user_id, text=full_text[i:i+4000])
-                )
+                await bot.send_message(chat_id=user_id, text=full_text[i:i+4000])
             print(f"✅ [WEBHOOK] Товар выдан пользователю {user_id}")
         except Exception as e:
             print(f"❌ [WEBHOOK] Ошибка отправки: {e}")
