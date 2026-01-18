@@ -222,13 +222,13 @@ async def crypto_webhook(request: Request):
     if payload_str.startswith("buy_50pack_user_"):
         try:
             user_id = int(payload_str.replace("buy_50pack_user_", ""))
-            full_text = "✅ ТЕСТ: ПОКУПКА УСПЕШНА! Реальные промты скоро будут здесь."
+            full_text = f"🎉 Спасибо за покупку!\n\nВы получаете полный набор из 50 промтов:\n\n{PROMPTS_50}"
         except ValueError:
             print("❌ [WEBHOOK] Ошибка извлечения user_id из buy_50pack")
     elif payload_str.startswith("buy_25pack_user_"):
         try:
             user_id = int(payload_str.replace("buy_25pack_user_", ""))
-            full_text = "✅ ТЕСТ: ПОКУПКА УСПЕШНА! Топ-25 промтов в разработке."
+            full_text = f"🎉 Спасибо за покупку!\n\nВы получаете Топ-25 промтов:\n\n{PROMPTS_25}"
         except ValueError:
             print("❌ [WEBHOOK] Ошибка извлечения user_id из buy_25pack")
     else:
@@ -238,7 +238,6 @@ async def crypto_webhook(request: Request):
     if user_id and full_text:
         try:
             print(f"📤 [WEBHOOK] Отправка {len(full_text)} символов пользователю {user_id}")
-            # ✅ Теперь работает, потому что мы в том же loop'е
             for i in range(0, len(full_text), 4000):
                 await bot.send_message(chat_id=user_id, text=full_text[i:i+4000])
             print(f"✅ [WEBHOOK] Товар выдан пользователю {user_id}")
@@ -251,9 +250,7 @@ async def crypto_webhook(request: Request):
 
 # === ЗАПУСК (без потоков!) ===
 async def main():
-    # Запускаем polling в фоне
     polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
-    # Запускаем FastAPI сервер
     config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
