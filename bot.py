@@ -191,7 +191,7 @@ async def confirm_purchase(callback: CallbackQuery):
         await callback.message.answer("⚠️ Техническая ошибка.")
     await callback.answer()
 
-# === ИСПРАВЛЕННЫЙ WEBHOOK (работает с Render и cloudflared) ===
+# === ИСПРАВЛЕННЫЙ WEBHOOK ===
 @app.post("/crypto-webhook")
 async def crypto_webhook(request: Request):
     print("📥 [WEBHOOK] Запрос получен!")
@@ -223,13 +223,13 @@ async def crypto_webhook(request: Request):
     if payload_str.startswith("buy_50pack_user_"):
         try:
             user_id = int(payload_str.replace("buy_50pack_user_", ""))
-            full_text = f"🎉 Спасибо за покупку!\n\nВы получаете полный набор из 50 промтов:\n\n{PROMPTS_50}"
+            full_text = "✅ ТЕСТ: ПОКУПКА УСПЕШНА! Реальные промты скоро будут здесь."
         except ValueError:
             print("❌ [WEBHOOK] Ошибка извлечения user_id из buy_50pack")
     elif payload_str.startswith("buy_25pack_user_"):
         try:
             user_id = int(payload_str.replace("buy_25pack_user_", ""))
-            full_text = f"🎉 Спасибо за покупку!\n\nВы получаете Топ-25 промтов:\n\n{PROMPTS_25}"
+            full_text = "✅ ТЕСТ: ПОКУПКА УСПЕШНА! Топ-25 промтов в разработке."
         except ValueError:
             print("❌ [WEBHOOK] Ошибка извлечения user_id из buy_25pack")
     else:
@@ -239,12 +239,11 @@ async def crypto_webhook(request: Request):
     if user_id and full_text:
         try:
             print(f"📤 [WEBHOOK] Отправка {len(full_text)} символов пользователю {user_id}")
-            max_len = 4000
-            loop = asyncio.get_event_loop()
-            for i in range(0, len(full_text), max_len):
+            # 🔑 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: используем bot._loop
+            for i in range(0, len(full_text), 4000):
                 asyncio.run_coroutine_threadsafe(
-                    bot.send_message(chat_id=user_id, text=full_text[i:i + max_len]),
-                    loop
+                    bot.send_message(chat_id=user_id, text=full_text[i:i+4000]),
+                    bot._loop
                 )
             print(f"✅ [WEBHOOK] Товар выдан пользователю {user_id}")
         except Exception as e:
