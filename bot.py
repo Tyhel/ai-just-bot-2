@@ -1,5 +1,4 @@
 import asyncio
-import threading
 import requests
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
@@ -191,7 +190,7 @@ async def confirm_purchase(callback: CallbackQuery):
         await callback.message.answer("⚠️ Техническая ошибка.")
     await callback.answer()
 
-# === ИСПРАВЛЕННЫЙ WEBHOOK ДЛЯ RENDER + AIOGRAM 3.X ===
+# === WEBHOOK (работает в том же event loop'е) ===
 @app.post("/crypto-webhook")
 async def crypto_webhook(request: Request):
     print("📥 [WEBHOOK] Запрос получен!")
@@ -239,7 +238,7 @@ async def crypto_webhook(request: Request):
     if user_id and full_text:
         try:
             print(f"📤 [WEBHOOK] Отправка {len(full_text)} символов пользователю {user_id}")
-            # ✅ ПРАВИЛЬНЫЙ СПОСОБ: прямой вызов без потоков
+            # ✅ Теперь работает, потому что мы в том же loop'е
             for i in range(0, len(full_text), 4000):
                 await bot.send_message(chat_id=user_id, text=full_text[i:i+4000])
             print(f"✅ [WEBHOOK] Товар выдан пользователю {user_id}")
@@ -250,17 +249,15 @@ async def crypto_webhook(request: Request):
 
     return Response(status_code=200)
 
-# === ЗАПУСК ===
-def run_bot():
-    async def main():
-        await dp.start_polling(bot, handle_signals=False)
-    asyncio.run(main())
-
-def run_webhook():
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+# === ЗАПУСК (без потоков!) ===
+async def main():
+    # Запускаем polling в фоне
+    polling_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
+    # Запускаем FastAPI сервер
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 if __name__ == "__main__":
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
     print("✅ Бот и webhook запущены!")
-    run_webhook()
+    asyncio.run(main())
