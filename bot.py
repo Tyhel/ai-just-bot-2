@@ -190,7 +190,7 @@ async def confirm_purchase(callback: CallbackQuery):
         await callback.message.answer("⚠️ Техническая ошибка.")
     await callback.answer()
 
-# === WEBHOOK (только он!) ===
+# === WEBHOOK ДЛЯ CRYPTO BOT (оплата) ===
 @app.post("/crypto-webhook")
 async def crypto_webhook(request: Request):
     print("📥 [WEBHOOK] Запрос получен!")
@@ -259,7 +259,26 @@ async def crypto_webhook(request: Request):
 
     return Response(status_code=200)
 
-# === ЗАПУСК (ТОЛЬКО FASTAPI, БЕЗ POLLING!) ===
+# === WEBHOOK ДЛЯ TELEGRAM (сообщения от пользователей) ===
+@app.post("/telegram-webhook")
+async def telegram_webhook(request: Request):
+    update = await request.json()
+    await dp.feed_raw_update(bot, update)
+    return Response(status_code=200)
+
+# === УСТАНОВКА WEBHOOK'А ПРИ СТАРТЕ ===
+async def set_webhook():
+    webhook_url = "https://ai-just-bot-2.onrender.com/telegram-webhook"
+    await bot.set_webhook(url=webhook_url)
+    print(f"✅ Webhook для Telegram установлен: {webhook_url}")
+
+# === ЗАПУСК ===
+async def main():
+    await set_webhook()
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
 if __name__ == "__main__":
-    print("✅ Webhook-бот запущен!")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    print("✅ Бот и webhook запущены!")
+    asyncio.run(main())
