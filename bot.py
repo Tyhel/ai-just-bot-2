@@ -12,7 +12,7 @@ import logging
 BOT_TOKEN = "8328706906:AAEcSN2x88oLLsKzzV1lIEfJ6zvjIweK6uk"
 MERCHANT_TOKEN = "516202:AA7y0K7T2YhC94z0lLMOmWPeKAVs9mGEu62"
 
-# === ЗАГРУЗКА ПРОМТОВ ===
+# === ЗАГРУЗКА ПРОМТОВ (если файлы есть в репозитории) ===
 def load_prompts(filepath, count):
     try:
         with open(filepath, "r", encoding="utf-8") as f:
