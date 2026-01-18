@@ -2,7 +2,7 @@ import asyncio
 import requests
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, BufferedInputFile
 from aiogram.exceptions import TelegramBadRequest
 from fastapi import FastAPI, Request, Response
 import uvicorn
@@ -190,7 +190,7 @@ async def confirm_purchase(callback: CallbackQuery):
         await callback.message.answer("⚠️ Техническая ошибка.")
     await callback.answer()
 
-# === WEBHOOK (работает в том же event loop'е) ===
+# === WEBHOOK с отправкой ФАЙЛОМ ===
 @app.post("/crypto-webhook")
 async def crypto_webhook(request: Request):
     print("📥 [WEBHOOK] Запрос получен!")
@@ -217,30 +217,42 @@ async def crypto_webhook(request: Request):
     print(f"📦 [WEBHOOK] Payload: '{payload_str}'")
 
     user_id = None
-    full_text = ""
+    file_content = ""
+    filename = ""
 
     if payload_str.startswith("buy_50pack_user_"):
         try:
             user_id = int(payload_str.replace("buy_50pack_user_", ""))
-            full_text = f"🎉 Спасибо за покупку!\n\nВы получаете полный набор из 50 промтов:\n\n{PROMPTS_50}"
+            file_content = PROMPTS_50
+            filename = "50_futuristic_prompts.txt"
         except ValueError:
             print("❌ [WEBHOOK] Ошибка извлечения user_id из buy_50pack")
     elif payload_str.startswith("buy_25pack_user_"):
         try:
             user_id = int(payload_str.replace("buy_25pack_user_", ""))
-            full_text = f"🎉 Спасибо за покупку!\n\nВы получаете Топ-25 промтов:\n\n{PROMPTS_25}"
+            file_content = PROMPTS_25
+            filename = "top_25_prompts.txt"
         except ValueError:
             print("❌ [WEBHOOK] Ошибка извлечения user_id из buy_25pack")
     else:
         print("⚠️ [WEBHOOK] Неизвестный payload")
         return Response(status_code=200)
 
-    if user_id and full_text:
+    if user_id and file_content:
         try:
-            print(f"📤 [WEBHOOK] Отправка {len(full_text)} символов пользователю {user_id}")
-            for i in range(0, len(full_text), 4000):
-                await bot.send_message(chat_id=user_id, text=full_text[i:i+4000])
-            print(f"✅ [WEBHOOK] Товар выдан пользователю {user_id}")
+            print(f"📤 [WEBHOOK] Отправка файла '{filename}' пользователю {user_id}")
+            # ✅ Отправка как файл
+            document = BufferedInputFile(
+                file_content.encode("utf-8"),
+                filename=filename
+            )
+            await bot.send_document(
+                chat_id=user_id,
+                document=document,
+                caption=f"🎉 Спасибо за покупку!\n\nВаш файл: <b>{filename}</b>",
+                parse_mode="HTML"
+            )
+            print(f"✅ [WEBHOOK] Файл выдан пользователю {user_id}")
         except Exception as e:
             print(f"❌ [WEBHOOK] Ошибка отправки: {e}")
     else:
