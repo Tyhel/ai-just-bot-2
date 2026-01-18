@@ -257,7 +257,7 @@ async def crypto_webhook(request: Request):
 # === ЗАПУСК ===
 def run_bot():
     async def main():
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, handle_signals=False)
     asyncio.run(main())
 
 def run_webhook():
